@@ -1,0 +1,35 @@
+.app-shell {
+  width: min(720px, calc(100% - 32px));
+  margin: 64px auto;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-bottom: 12px;
+}
+
+.intro {
+  max-width: 55ch;
+  margin: 0 auto 24px;
+}
+
+.card {
+  text-align: left;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.card h2 {
+  margin-top: 0;
+}
+
+.error-text {
+  margin-top: 12px;
+  color: #b91c1c;
+}
