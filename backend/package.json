@@ -4,7 +4,7 @@
   "description": "Minimal Express server for the Workout Logger project",
   "main": "index.js",
   "scripts": {
-    "start": "node --env-file=.env index.js",
+    "start": "node index.js",
     "dev": "node --watch --env-file=.env index.js",
     "test": "echo \"No tests yet\""
   },
