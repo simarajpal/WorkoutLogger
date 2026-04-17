@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import { logWorkout } from '../services/api'
+import { useEffect, useState } from 'react'
+import { logWorkout, updateWorkout } from '../services/api'
 
-function WorkoutForm({ onWorkoutLogged }) {
+function WorkoutForm({ editingWorkout, onWorkoutSaved, onCancelEdit }) {
   const [exerciseName, setExerciseName] = useState('')
   const [sets, setSets] = useState('')
   const [reps, setReps] = useState('')
@@ -11,6 +11,25 @@ function WorkoutForm({ onWorkoutLogged }) {
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
 
+  useEffect(() => {
+    if (editingWorkout) {
+      setExerciseName(editingWorkout.exercise_name)
+      setSets(String(editingWorkout.sets))
+      setReps(String(editingWorkout.reps))
+      setWeight(String(editingWorkout.weight))
+      setNotes(editingWorkout.notes || '')
+      setSuccessMessage('')
+      setErrorMessage('')
+      return
+    }
+
+    setExerciseName('')
+    setSets('')
+    setReps('')
+    setWeight('')
+    setNotes('')
+  }, [editingWorkout])
+
   async function handleSubmit(event) {
     event.preventDefault()
     setIsSubmitting(true)
@@ -18,23 +37,31 @@ function WorkoutForm({ onWorkoutLogged }) {
     setErrorMessage('')
 
     try {
-      const newWorkout = await logWorkout({
+      const workoutPayload = {
         exercise_name: exerciseName,
         sets: Number(sets),
         reps: Number(reps),
         weight: Number(weight),
         notes,
-      })
+      }
 
-      setSuccessMessage(`Saved ${newWorkout.exercise_name} successfully.`)
-      setExerciseName('')
-      setSets('')
-      setReps('')
-      setWeight('')
-      setNotes('')
+      let savedWorkout
 
-      if (onWorkoutLogged) {
-        onWorkoutLogged(newWorkout)
+      if (editingWorkout) {
+        savedWorkout = await updateWorkout(editingWorkout.id, workoutPayload)
+        setSuccessMessage(`Updated ${savedWorkout.exercise_name} successfully.`)
+      } else {
+        savedWorkout = await logWorkout(workoutPayload)
+        setSuccessMessage(`Saved ${savedWorkout.exercise_name} successfully.`)
+        setExerciseName('')
+        setSets('')
+        setReps('')
+        setWeight('')
+        setNotes('')
+      }
+
+      if (onWorkoutSaved) {
+        onWorkoutSaved(savedWorkout)
       }
     } catch (error) {
       setErrorMessage(error.message)
@@ -45,7 +72,7 @@ function WorkoutForm({ onWorkoutLogged }) {
 
   return (
     <section className="card">
-      <h2>Log a Workout</h2>
+      <h2>{editingWorkout ? 'Edit Workout' : 'Log a Workout'}</h2>
       <form className="workout-form" onSubmit={handleSubmit}>
         <label className="form-field">
           <span>Exercise Name</span>
@@ -104,9 +131,26 @@ function WorkoutForm({ onWorkoutLogged }) {
           />
         </label>
 
-        <button className="submit-button" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving...' : 'Save Workout'}
-        </button>
+        <div className="form-actions">
+          <button className="submit-button" type="submit" disabled={isSubmitting}>
+            {isSubmitting
+              ? 'Saving...'
+              : editingWorkout
+                ? 'Update Workout'
+                : 'Save Workout'}
+          </button>
+
+          {editingWorkout && (
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={onCancelEdit}
+              disabled={isSubmitting}
+            >
+              Cancel Edit
+            </button>
+          )}
+        </div>
 
         {successMessage && <p className="success-text">{successMessage}</p>}
         {errorMessage && <p className="error-text">{errorMessage}</p>}
