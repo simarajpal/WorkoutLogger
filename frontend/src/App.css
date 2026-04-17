@@ -1,6 +1,8 @@
 .app-shell {
   width: min(720px, calc(100% - 32px));
   margin: 64px auto;
+  display: grid;
+  gap: 24px;
 }
 
 .eyebrow {
@@ -29,7 +31,54 @@
   margin-top: 0;
 }
 
+.workout-form {
+  display: grid;
+  gap: 16px;
+}
+
+.form-field {
+  display: grid;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.form-field input,
+.form-field textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font: inherit;
+  color: #0f172a;
+  background: #ffffff;
+}
+
+.form-field textarea {
+  resize: vertical;
+}
+
+.submit-button {
+  border: none;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font: inherit;
+  font-weight: 700;
+  color: #ffffff;
+  background: #0f766e;
+  cursor: pointer;
+}
+
+.submit-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 .error-text {
   margin-top: 12px;
   color: #b91c1c;
+}
+
+.success-text {
+  margin-top: 12px;
+  color: #047857;
 }

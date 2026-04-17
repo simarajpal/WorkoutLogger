@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import WorkoutForm from './components/WorkoutForm'
 import './App.css'
 
 function App() {
   const [backendStatus, setBackendStatus] = useState('Loading...')
   const [errorMessage, setErrorMessage] = useState('')
+  const [latestWorkoutName, setLatestWorkoutName] = useState('')
 
   useEffect(() => {
     async function loadBackendStatus() {
@@ -36,6 +38,21 @@ function App() {
         </p>
         {errorMessage && <p className="error-text">{errorMessage}</p>}
       </section>
+
+      <WorkoutForm
+        onWorkoutLogged={(newWorkout) => {
+          setLatestWorkoutName(newWorkout.exercise_name)
+        }}
+      />
+
+      {latestWorkoutName && (
+        <section className="card">
+          <h2>Latest Saved Workout</h2>
+          <p>
+            Most recent save: <strong>{latestWorkoutName}</strong>
+          </p>
+        </section>
+      )}
     </main>
   )
 }
