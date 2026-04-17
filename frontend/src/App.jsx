@@ -24,7 +24,6 @@ function formatDateLabel(dateString) {
 function App() {
   const [session, setSession] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
-  const [backendStatus, setBackendStatus] = useState('Loading...')
   const [errorMessage, setErrorMessage] = useState('')
   const [workouts, setWorkouts] = useState([])
   const [editingWorkout, setEditingWorkout] = useState(null)
@@ -69,16 +68,10 @@ function App() {
       }
 
       try {
-        const [healthResponse, workoutData] = await Promise.all([
-          fetch(`${API_BASE_URL}/health`),
-          getWorkouts(),
-        ])
-        const healthData = await healthResponse.json()
-        setBackendStatus(healthData.status)
+        const workoutData = await getWorkouts()
         setWorkouts(workoutData)
         setErrorMessage('')
       } catch (error) {
-        setBackendStatus('Unavailable')
         setErrorMessage(error.message || 'Could not load your workouts.')
       }
     }
@@ -193,7 +186,7 @@ function App() {
           </button>
         </header>
 
-        <section className="grid gap-4 rounded-3xl border border-[#1e1e1e] bg-gradient-to-br from-[#141414] via-[#141414] to-[#171717] p-6 shadow-2xl shadow-black/30 lg:grid-cols-[1.6fr_0.9fr] lg:items-end">
+        <section className="rounded-3xl border border-[#1e1e1e] bg-gradient-to-br from-[#141414] via-[#141414] to-[#171717] p-6 shadow-2xl shadow-black/30">
           <div className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#22c55e]">
               Personal dashboard
@@ -203,17 +196,13 @@ function App() {
               only sees its own workouts through Supabase Auth and RLS.
             </p>
           </div>
-
-          <div className="rounded-2xl border border-[#1e1e1e] bg-[#0f0f0f] p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#86efac]">
-              Backend status
-            </p>
-            <p className="mt-3 text-3xl font-black text-white">{backendStatus}</p>
-            {errorMessage && (
-              <p className="mt-3 text-sm text-red-300">{errorMessage}</p>
-            )}
-          </div>
         </section>
+
+        {errorMessage && (
+          <p className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            {errorMessage}
+          </p>
+        )}
 
         <section className="grid gap-4 md:grid-cols-3">
           <article className="rounded-3xl border border-[#1e1e1e] bg-[#141414] p-5 shadow-xl shadow-black/20">

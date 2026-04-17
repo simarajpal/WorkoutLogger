@@ -56,10 +56,7 @@ function Auth() {
     <main className="flex min-h-screen items-center justify-center bg-[#0f0f0f] px-4 py-8 sm:px-6">
       <section className="w-full max-w-md rounded-[2rem] border border-[#1e1e1e] bg-[#141414] p-6 shadow-2xl shadow-black/40 sm:p-8">
         <div className="mb-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#22c55e]">
-            Supabase Auth
-          </p>
-          <h1 className="mt-4 text-4xl font-black tracking-tight text-white">
+          <h1 className="text-4xl font-black tracking-tight text-white">
             {mode === 'signup' ? 'Create Account' : 'Welcome Back'}
           </h1>
           <p className="mt-3 text-sm leading-6 text-zinc-400">
