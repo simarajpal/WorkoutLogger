@@ -1,42 +1,18 @@
-* {
-  box-sizing: border-box;
-}
+@import "tailwindcss";
 
-body {
-  margin: 0;
-  font-family: Inter, system-ui, sans-serif;
-  line-height: 1.5;
-  color: #0f172a;
-  background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
-}
+@layer base {
+  body {
+    @apply m-0 min-h-screen bg-[#0f0f0f] text-zinc-100 antialiased;
+    font-family: Inter, system-ui, sans-serif;
+  }
 
-#root {
-  min-height: 100vh;
-  text-align: center;
-}
+  #root {
+    @apply min-h-screen;
+  }
 
-h1,
-h2 {
-  color: #0f172a;
-}
-
-h1 {
-  font-size: clamp(2.5rem, 6vw, 4rem);
-  margin: 0 0 16px;
-}
-
-h2 {
-  font-size: 1.25rem;
-  margin: 0 0 8px;
-}
-
-p {
-  margin: 0;
-}
-
-code {
-  font-family: 'SFMono-Regular', Consolas, monospace;
-  background: #e2e8f0;
-  padding: 2px 6px;
-  border-radius: 6px;
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
 }
