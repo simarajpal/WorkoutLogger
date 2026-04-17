@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import WorkoutForm from './components/WorkoutForm'
 import Auth from './pages/Auth'
 import { supabase } from './config/supabase'
-import { deleteWorkout, getWorkouts } from './services/api'
+import { API_BASE_URL, deleteWorkout, getWorkouts } from './services/api'
 
 function formatWorkoutDate(dateString) {
   return new Intl.DateTimeFormat('en-US', {
@@ -70,7 +70,7 @@ function App() {
 
       try {
         const [healthResponse, workoutData] = await Promise.all([
-          fetch('http://localhost:3001/health'),
+          fetch(`${API_BASE_URL}/health`),
           getWorkouts(),
         ])
         const healthData = await healthResponse.json()
