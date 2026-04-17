@@ -1,6 +1,6 @@
 const express = require('express')
 const cors = require('cors')
-const supabase = require('./src/config/supabase')
+const { createSupabaseClient } = require('./src/config/supabase')
 
 const app = express()
 const PORT = 3001
@@ -8,11 +8,41 @@ const PORT = 3001
 app.use(cors())
 app.use(express.json())
 
+async function getAuthenticatedUser(request, response) {
+  const authHeader = request.headers.authorization
+
+  if (!authHeader?.startsWith('Bearer ')) {
+    response.status(401).json({ error: 'Missing or invalid Authorization header.' })
+    return null
+  }
+
+  const supabase = createSupabaseClient(authHeader)
+  const token = authHeader.replace('Bearer ', '')
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser(token)
+
+  if (error || !user) {
+    response.status(401).json({ error: 'You must be logged in.' })
+    return null
+  }
+
+  return { supabase, user }
+}
+
 app.get('/health', (request, response) => {
   response.json({ status: 'ok' })
 })
 
 app.get('/workouts', async (request, response) => {
+  const authContext = await getAuthenticatedUser(request, response)
+
+  if (!authContext) {
+    return
+  }
+
+  const { supabase } = authContext
   const { data, error } = await supabase
     .from('workouts')
     .select('*')
@@ -26,13 +56,20 @@ app.get('/workouts', async (request, response) => {
 })
 
 app.post('/workouts', async (request, response) => {
+  const authContext = await getAuthenticatedUser(request, response)
+
+  if (!authContext) {
+    return
+  }
+
+  const { supabase, user } = authContext
   const { exercise_name, sets, reps, weight, notes } = request.body
 
   const { data, error } = await supabase
     .from('workouts')
     .insert([
       {
-        user_id: null,
+        user_id: user.id,
         exercise_name,
         sets,
         reps,
@@ -51,6 +88,13 @@ app.post('/workouts', async (request, response) => {
 })
 
 app.put('/workouts/:id', async (request, response) => {
+  const authContext = await getAuthenticatedUser(request, response)
+
+  if (!authContext) {
+    return
+  }
+
+  const { supabase } = authContext
   const { id } = request.params
   const { exercise_name, sets, reps, weight, notes } = request.body
 
@@ -82,6 +126,13 @@ app.put('/workouts/:id', async (request, response) => {
 })
 
 app.delete('/workouts/:id', async (request, response) => {
+  const authContext = await getAuthenticatedUser(request, response)
+
+  if (!authContext) {
+    return
+  }
+
+  const { supabase } = authContext
   const { id } = request.params
 
   const { data, error } = await supabase

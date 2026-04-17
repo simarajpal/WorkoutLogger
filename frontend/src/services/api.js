@@ -1,7 +1,31 @@
+import { supabase } from '../config/supabase'
+
 const API_BASE_URL = 'http://localhost:3001'
 
+async function createAuthHeaders(includeJson = false) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  if (!session) {
+    throw new Error('You must be logged in to manage workouts.')
+  }
+
+  const headers = {
+    Authorization: `Bearer ${session.access_token}`,
+  }
+
+  if (includeJson) {
+    headers['Content-Type'] = 'application/json'
+  }
+
+  return headers
+}
+
 export async function getWorkouts() {
-  const response = await fetch(`${API_BASE_URL}/workouts`)
+  const response = await fetch(`${API_BASE_URL}/workouts`, {
+    headers: await createAuthHeaders(),
+  })
   const data = await response.json()
 
   if (!response.ok) {
@@ -14,9 +38,7 @@ export async function getWorkouts() {
 export async function logWorkout(workoutData) {
   const response = await fetch(`${API_BASE_URL}/workouts`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: await createAuthHeaders(true),
     body: JSON.stringify(workoutData),
   })
 
@@ -32,9 +54,7 @@ export async function logWorkout(workoutData) {
 export async function updateWorkout(id, workoutData) {
   const response = await fetch(`${API_BASE_URL}/workouts/${id}`, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: await createAuthHeaders(true),
     body: JSON.stringify(workoutData),
   })
 
@@ -50,6 +70,7 @@ export async function updateWorkout(id, workoutData) {
 export async function deleteWorkout(id) {
   const response = await fetch(`${API_BASE_URL}/workouts/${id}`, {
     method: 'DELETE',
+    headers: await createAuthHeaders(),
   })
 
   const data = await response.json()

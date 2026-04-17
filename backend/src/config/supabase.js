@@ -18,6 +18,23 @@ if (
   )
 }
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+function createSupabaseClient(authHeader) {
+  const options = {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
 
-module.exports = supabase
+  if (authHeader) {
+    options.global = {
+      headers: {
+        Authorization: authHeader,
+      },
+    }
+  }
+ 
+  return createClient(supabaseUrl, supabaseAnonKey, options)
+}
+
+module.exports = { createSupabaseClient }

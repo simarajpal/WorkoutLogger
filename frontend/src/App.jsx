@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
 import WorkoutForm from './components/WorkoutForm'
+import Auth from './pages/Auth'
+import { supabase } from './config/supabase'
 import { deleteWorkout, getWorkouts } from './services/api'
 import './App.css'
 
 function App() {
+  const [session, setSession] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
   const [backendStatus, setBackendStatus] = useState('Loading...')
   const [errorMessage, setErrorMessage] = useState('')
   const [workouts, setWorkouts] = useState([])
@@ -12,7 +16,42 @@ function App() {
   const [listErrorMessage, setListErrorMessage] = useState('')
 
   useEffect(() => {
-    async function loadInitialData() {
+    async function loadSession() {
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession()
+
+      setSession(currentSession)
+      setAuthLoading(false)
+    }
+
+    loadSession()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      setSession(nextSession)
+      setAuthLoading(false)
+
+      if (event === 'SIGNED_OUT') {
+        setWorkouts([])
+        setEditingWorkout(null)
+        setListMessage('')
+        setListErrorMessage('')
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  useEffect(() => {
+    async function loadWorkoutData() {
+      if (!session) {
+        return
+      }
+
       try {
         const [healthResponse, workoutData] = await Promise.all([
           fetch('http://localhost:3001/health'),
@@ -21,14 +60,15 @@ function App() {
         const healthData = await healthResponse.json()
         setBackendStatus(healthData.status)
         setWorkouts(workoutData)
+        setErrorMessage('')
       } catch (error) {
         setBackendStatus('Unavailable')
-        setErrorMessage('Could not load data from the backend server.')
+        setErrorMessage(error.message || 'Could not load your workouts.')
       }
     }
 
-    loadInitialData()
-  }, [])
+    loadWorkoutData()
+  }, [session])
 
   async function handleDeleteWorkout(id) {
     const workoutToDelete = workouts.find((workout) => workout.id === id)
@@ -75,13 +115,40 @@ function App() {
     setListMessage(`Added ${savedWorkout.exercise_name}.`)
   }
 
+  async function handleLogout() {
+    await supabase.auth.signOut()
+  }
+
+  if (authLoading) {
+    return (
+      <main className="app-shell">
+        <section className="card">
+          <h1>Loading session...</h1>
+          <p>Checking whether you are already logged in.</p>
+        </section>
+      </main>
+    )
+  }
+
+  if (!session) {
+    return <Auth />
+  }
+
   return (
     <main className="app-shell">
-      <p className="eyebrow">Frontend is running</p>
+      <div className="top-bar">
+        <div>
+          <p className="eyebrow">Signed in</p>
+          <p className="user-email">{session.user.email}</p>
+        </div>
+        <button className="secondary-button" type="button" onClick={handleLogout}>
+          Log Out
+        </button>
+      </div>
+
       <h1>Workout Logger</h1>
       <p className="intro">
-        This page now makes one test request to your Express backend when it
-        loads.
+        Your workouts are now filtered by the logged-in Supabase user.
       </p>
 
       <section className="card">
