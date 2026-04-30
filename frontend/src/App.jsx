@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
+import AIWorkoutInput from './components/AIWorkoutInput'
 import WorkoutForm from './components/WorkoutForm'
 import Auth from './pages/Auth'
 import { supabase } from './config/supabase'
-import { API_BASE_URL, deleteWorkout, getWorkouts } from './services/api'
+import { deleteWorkout, getWorkouts, logWorkout } from './services/api'
 
 function formatWorkoutDate(dateString) {
   return new Intl.DateTimeFormat('en-US', {
@@ -21,6 +22,30 @@ function formatDateLabel(dateString) {
   }).format(new Date(dateString))
 }
 
+function buildNotesFromParsedWorkout(parsedWorkout) {
+  const noteParts = []
+
+  if (parsedWorkout.duration) {
+    noteParts.push(`Duration: ${parsedWorkout.duration}`)
+  }
+
+  if (parsedWorkout.notes) {
+    noteParts.push(parsedWorkout.notes)
+  }
+
+  return noteParts.join('\n')
+}
+
+function mapParsedWorkoutToFormValues(parsedWorkout) {
+  return {
+    exercise_name: parsedWorkout.exercise_name || '',
+    sets: parsedWorkout.sets,
+    reps: parsedWorkout.reps,
+    weight: parsedWorkout.weight,
+    notes: buildNotesFromParsedWorkout(parsedWorkout),
+  }
+}
+
 function App() {
   const [session, setSession] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
@@ -29,6 +54,9 @@ function App() {
   const [editingWorkout, setEditingWorkout] = useState(null)
   const [listMessage, setListMessage] = useState('')
   const [listErrorMessage, setListErrorMessage] = useState('')
+  const [parsedWorkouts, setParsedWorkouts] = useState([])
+  const [selectedParsedIndex, setSelectedParsedIndex] = useState(null)
+  const [isSavingAllParsed, setIsSavingAllParsed] = useState(false)
 
   useEffect(() => {
     async function loadSession() {
@@ -53,6 +81,8 @@ function App() {
         setEditingWorkout(null)
         setListMessage('')
         setListErrorMessage('')
+        setParsedWorkouts([])
+        setSelectedParsedIndex(null)
       }
     })
 
@@ -102,12 +132,15 @@ function App() {
 
   function handleStartEdit(workout) {
     setEditingWorkout(workout)
+    setSelectedParsedIndex(null)
     setListMessage('')
     setListErrorMessage('')
   }
 
   function handleWorkoutSaved(savedWorkout) {
     setListErrorMessage('')
+    const isSavingParsedWorkout =
+      !editingWorkout && selectedParsedIndex !== null && parsedWorkouts.length > 0
 
     if (editingWorkout) {
       setWorkouts((currentWorkouts) =>
@@ -122,15 +155,71 @@ function App() {
 
     setWorkouts((currentWorkouts) => [savedWorkout, ...currentWorkouts])
     setListMessage(`Added ${savedWorkout.exercise_name}.`)
+
+    if (isSavingParsedWorkout) {
+      const nextParsedWorkouts = parsedWorkouts.filter(
+        (_, index) => index !== selectedParsedIndex,
+      )
+      setParsedWorkouts(nextParsedWorkouts)
+      setSelectedParsedIndex(nextParsedWorkouts.length > 0 ? 0 : null)
+    }
   }
 
   async function handleLogout() {
     await supabase.auth.signOut()
   }
 
+  function handleParsedWorkouts(workoutsFromAI) {
+    setEditingWorkout(null)
+    setParsedWorkouts(workoutsFromAI)
+    setSelectedParsedIndex(workoutsFromAI.length > 0 ? 0 : null)
+    setListMessage(
+      workoutsFromAI.length > 1
+        ? `Parsed ${workoutsFromAI.length} workout entries.`
+        : 'Parsed 1 workout entry.',
+    )
+    setListErrorMessage('')
+  }
+
+  async function handleSaveAllParsedWorkouts() {
+    if (parsedWorkouts.length === 0) {
+      return
+    }
+
+    setIsSavingAllParsed(true)
+    setListErrorMessage('')
+
+    try {
+      const savedWorkouts = []
+
+      for (const parsedWorkout of parsedWorkouts) {
+        const savedWorkout = await logWorkout({
+          exercise_name: parsedWorkout.exercise_name,
+          sets: parsedWorkout.sets,
+          reps: parsedWorkout.reps,
+          weight: parsedWorkout.weight,
+          notes: buildNotesFromParsedWorkout(parsedWorkout),
+        })
+
+        savedWorkouts.push(savedWorkout)
+      }
+
+      setWorkouts((currentWorkouts) => [...savedWorkouts, ...currentWorkouts])
+      setParsedWorkouts([])
+      setSelectedParsedIndex(null)
+      setListMessage(`Saved ${savedWorkouts.length} AI-parsed workout entries.`)
+    } catch (error) {
+      setListErrorMessage(error.message || 'Failed to save AI workouts.')
+    } finally {
+      setIsSavingAllParsed(false)
+    }
+  }
+
   const totalSessions = workouts.length
-  const totalSets = workouts.reduce((sum, workout) => sum + workout.sets, 0)
+  const totalSets = workouts.reduce((sum, workout) => sum + (workout.sets || 0), 0)
   const lastWorkout = workouts[0]
+  const selectedParsedWorkout =
+    selectedParsedIndex !== null ? parsedWorkouts[selectedParsedIndex] : null
   const groupedWorkouts = workouts.reduce((groups, workout) => {
     const dateKey = new Date(workout.created_at).toDateString()
 
@@ -236,10 +325,117 @@ function App() {
           </article>
         </section>
 
+        <AIWorkoutInput onParsed={handleParsedWorkouts} />
+
+        {parsedWorkouts.length > 0 && (
+          <section className="rounded-3xl border border-[#1e1e1e] bg-[#141414] p-6 shadow-2xl shadow-black/30">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#22c55e]">
+                  AI review
+                </p>
+                <h2 className="mt-2 text-2xl font-bold tracking-tight text-white">
+                  Review parsed workouts
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
+                  Nothing is saved automatically. Pick one to review in the form,
+                  or save the whole reviewed batch at once.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <button
+                  className="inline-flex items-center justify-center rounded-full bg-[#22c55e] px-5 py-3 text-sm font-bold text-black transition hover:bg-[#4ade80] disabled:cursor-not-allowed disabled:opacity-70"
+                  type="button"
+                  onClick={handleSaveAllParsedWorkouts}
+                  disabled={isSavingAllParsed}
+                >
+                  {isSavingAllParsed ? 'Saving all...' : 'Save All Parsed Workouts'}
+                </button>
+                <button
+                  className="inline-flex items-center justify-center rounded-full border border-[#1e1e1e] bg-[#0f0f0f] px-5 py-3 text-sm font-semibold text-zinc-100 transition hover:border-[#22c55e]/40 hover:bg-[#181818]"
+                  type="button"
+                  onClick={() => {
+                    setParsedWorkouts([])
+                    setSelectedParsedIndex(null)
+                  }}
+                >
+                  Clear Parsed Results
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-4 lg:grid-cols-2">
+              {parsedWorkouts.map((parsedWorkout, index) => (
+                <article
+                  className={`rounded-3xl border p-5 shadow-lg shadow-black/20 ${
+                    selectedParsedIndex === index
+                      ? 'border-[#22c55e]/40 bg-[#101910]'
+                      : 'border-[#1e1e1e] bg-[#0f0f0f]'
+                  }`}
+                  key={`${parsedWorkout.exercise_name}-${index}`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-xl font-bold tracking-tight text-white">
+                        {parsedWorkout.exercise_name}
+                      </h3>
+                      <p className="mt-2 text-sm text-zinc-400">
+                        Sets:{' '}
+                        <span className="font-semibold text-white">
+                          {parsedWorkout.sets ?? '-'}
+                        </span>
+                        {'  '}Reps:{' '}
+                        <span className="font-semibold text-white">
+                          {parsedWorkout.reps ?? '-'}
+                        </span>
+                        {'  '}Weight:{' '}
+                        <span className="font-semibold text-white">
+                          {parsedWorkout.weight ?? '-'}
+                        </span>
+                      </p>
+                      <p className="mt-2 text-sm text-zinc-500">
+                        {parsedWorkout.duration ||
+                          parsedWorkout.notes ||
+                          'No extra details'}
+                      </p>
+                    </div>
+
+                    {selectedParsedIndex === index && (
+                      <span className="rounded-full bg-[#22c55e] px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-black">
+                        In form
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-4">
+                    <button
+                      className="inline-flex items-center justify-center rounded-full border border-[#1e1e1e] bg-[#141414] px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:border-[#22c55e]/40 hover:bg-[#181818]"
+                      type="button"
+                      onClick={() => {
+                        setEditingWorkout(null)
+                        setSelectedParsedIndex(index)
+                      }}
+                    >
+                      Load Into Form
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
         <WorkoutForm
           editingWorkout={editingWorkout}
+          prefillWorkout={
+            selectedParsedWorkout
+              ? mapParsedWorkoutToFormValues(selectedParsedWorkout)
+              : null
+          }
           onWorkoutSaved={handleWorkoutSaved}
           onCancelEdit={() => setEditingWorkout(null)}
+          onClearPrefill={() => setSelectedParsedIndex(null)}
         />
 
         <section className="rounded-3xl border border-[#1e1e1e] bg-[#141414] p-6 shadow-2xl shadow-black/30">
@@ -305,11 +501,11 @@ function App() {
                             </h3>
                             <p className="mt-2 text-sm text-zinc-400">
                               <span className="font-semibold text-white">
-                                {workout.sets}
+                                {workout.sets ?? '-'}
                               </span>{' '}
                               sets x{' '}
                               <span className="font-semibold text-white">
-                                {workout.reps}
+                                {workout.reps ?? '-'}
                               </span>{' '}
                               reps
                             </p>
@@ -324,7 +520,7 @@ function App() {
                                 Weight
                               </p>
                               <p className="mt-1 text-2xl font-black text-white">
-                                {workout.weight}
+                                {workout.weight ?? '-'}
                               </p>
                             </div>
 

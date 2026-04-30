@@ -1,7 +1,22 @@
 import { useEffect, useState } from 'react'
 import { logWorkout, updateWorkout } from '../services/api'
 
-function WorkoutForm({ editingWorkout, onWorkoutSaved, onCancelEdit }) {
+function toNullableNumber(value) {
+  if (value === '' || value === null || value === undefined) {
+    return null
+  }
+
+  const parsedNumber = Number(value)
+  return Number.isFinite(parsedNumber) ? parsedNumber : null
+}
+
+function WorkoutForm({
+  editingWorkout,
+  prefillWorkout,
+  onWorkoutSaved,
+  onCancelEdit,
+  onClearPrefill,
+}) {
   const [exerciseName, setExerciseName] = useState('')
   const [sets, setSets] = useState('')
   const [reps, setReps] = useState('')
@@ -23,12 +38,25 @@ function WorkoutForm({ editingWorkout, onWorkoutSaved, onCancelEdit }) {
       return
     }
 
+    if (prefillWorkout) {
+      setExerciseName(prefillWorkout.exercise_name || '')
+      setSets(prefillWorkout.sets === null ? '' : String(prefillWorkout.sets))
+      setReps(prefillWorkout.reps === null ? '' : String(prefillWorkout.reps))
+      setWeight(
+        prefillWorkout.weight === null ? '' : String(prefillWorkout.weight),
+      )
+      setNotes(prefillWorkout.notes || '')
+      setSuccessMessage('')
+      setErrorMessage('')
+      return
+    }
+
     setExerciseName('')
     setSets('')
     setReps('')
     setWeight('')
     setNotes('')
-  }, [editingWorkout])
+  }, [editingWorkout, prefillWorkout])
 
   async function handleSubmit(event) {
     event.preventDefault()
@@ -39,9 +67,9 @@ function WorkoutForm({ editingWorkout, onWorkoutSaved, onCancelEdit }) {
     try {
       const workoutPayload = {
         exercise_name: exerciseName,
-        sets: Number(sets),
-        reps: Number(reps),
-        weight: Number(weight),
+        sets: toNullableNumber(sets),
+        reps: toNullableNumber(reps),
+        weight: toNullableNumber(weight),
         notes,
       }
 
@@ -78,13 +106,23 @@ function WorkoutForm({ editingWorkout, onWorkoutSaved, onCancelEdit }) {
             Workout form
           </p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-white">
-            {editingWorkout ? 'Edit Workout' : 'Log a Workout'}
+            {editingWorkout
+              ? 'Edit Workout'
+              : prefillWorkout
+                ? 'Review Parsed Workout'
+                : 'Log a Workout'}
           </h2>
         </div>
 
         {editingWorkout && (
           <div className="rounded-2xl border border-[#22c55e]/20 bg-[#22c55e]/10 px-4 py-3 text-sm text-[#86efac]">
             You are editing an existing workout.
+          </div>
+        )}
+
+        {!editingWorkout && prefillWorkout && (
+          <div className="rounded-2xl border border-[#22c55e]/20 bg-[#22c55e]/10 px-4 py-3 text-sm text-[#86efac]">
+            AI filled this form for review. Check it before saving.
           </div>
         )}
       </div>
@@ -114,7 +152,6 @@ function WorkoutForm({ editingWorkout, onWorkoutSaved, onCancelEdit }) {
               onChange={(event) => setSets(event.target.value)}
               placeholder="3"
               min="1"
-              required
             />
           </label>
 
@@ -127,7 +164,6 @@ function WorkoutForm({ editingWorkout, onWorkoutSaved, onCancelEdit }) {
               onChange={(event) => setReps(event.target.value)}
               placeholder="10"
               min="1"
-              required
             />
           </label>
 
@@ -140,7 +176,6 @@ function WorkoutForm({ editingWorkout, onWorkoutSaved, onCancelEdit }) {
               onChange={(event) => setWeight(event.target.value)}
               placeholder="135"
               min="0"
-              required
             />
           </label>
         </div>
@@ -177,6 +212,17 @@ function WorkoutForm({ editingWorkout, onWorkoutSaved, onCancelEdit }) {
               disabled={isSubmitting}
             >
               Cancel Edit
+            </button>
+          )}
+
+          {!editingWorkout && prefillWorkout && (
+            <button
+              className="inline-flex items-center justify-center rounded-full border border-[#1e1e1e] bg-[#0f0f0f] px-5 py-3 text-sm font-semibold text-zinc-100 transition hover:border-[#22c55e]/40 hover:bg-[#181818] disabled:cursor-not-allowed disabled:opacity-70"
+              type="button"
+              onClick={onClearPrefill}
+              disabled={isSubmitting}
+            >
+              Clear AI Prefill
             </button>
           )}
         </div>

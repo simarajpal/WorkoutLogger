@@ -2,16 +2,17 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "Minimal Express server for the Workout Logger project",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node --watch --env-file=.env index.js",
+    "start": "node server.js",
+    "dev": "node --watch --env-file=.env server.js",
     "test": "echo \"No tests yet\""
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.103.0",
     "cors": "^2.8.6",
     "express": "^5.2.1"

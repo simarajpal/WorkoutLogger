@@ -23,62 +23,82 @@ async function createAuthHeaders(includeJson = false) {
   return headers
 }
 
-export async function getWorkouts() {
-  const response = await fetch(`${API_BASE_URL}/workouts`, {
-    headers: await createAuthHeaders(),
-  })
-  const data = await response.json()
+async function requestJson(path, options = {}, fallbackMessage) {
+  let response
+
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, options)
+  } catch {
+    throw new Error(
+      'Could not reach the backend. Check that the backend server is running and that VITE_API_BASE_URL is correct.',
+    )
+  }
+
+  const responseText = await response.text()
+  const data = responseText ? JSON.parse(responseText) : null
 
   if (!response.ok) {
-    throw new Error(data.error || 'Failed to load workouts.')
+    throw new Error(data?.error || fallbackMessage)
   }
 
   return data
+}
+
+export async function getWorkouts() {
+  return requestJson(
+    '/workouts',
+    {
+      headers: await createAuthHeaders(),
+    },
+    'Failed to load workouts.',
+  )
+}
+
+export async function parseWorkoutWithAI(text) {
+  const data = await requestJson(
+    '/api/ai/parse-workout',
+    {
+      method: 'POST',
+      headers: await createAuthHeaders(true),
+      body: JSON.stringify({ text }),
+    },
+    'Could not parse workout.',
+  )
+
+  return Array.isArray(data) ? data : [data]
 }
 
 export async function logWorkout(workoutData) {
-  const response = await fetch(`${API_BASE_URL}/workouts`, {
-    method: 'POST',
-    headers: await createAuthHeaders(true),
-    body: JSON.stringify(workoutData),
-  })
-
-  const data = await response.json()
-
-  if (!response.ok) {
-    throw new Error(data.error || 'Failed to save workout.')
-  }
-
-  return data
+  return requestJson(
+    '/workouts',
+    {
+      method: 'POST',
+      headers: await createAuthHeaders(true),
+      body: JSON.stringify(workoutData),
+    },
+    'Failed to save workout.',
+  )
 }
 
 export async function updateWorkout(id, workoutData) {
-  const response = await fetch(`${API_BASE_URL}/workouts/${id}`, {
-    method: 'PUT',
-    headers: await createAuthHeaders(true),
-    body: JSON.stringify(workoutData),
-  })
-
-  const data = await response.json()
-
-  if (!response.ok) {
-    throw new Error(data.error || 'Failed to update workout.')
-  }
-
-  return data
+  return requestJson(
+    `/workouts/${id}`,
+    {
+      method: 'PUT',
+      headers: await createAuthHeaders(true),
+      body: JSON.stringify(workoutData),
+    },
+    'Failed to update workout.',
+  )
 }
 
 export async function deleteWorkout(id) {
-  const response = await fetch(`${API_BASE_URL}/workouts/${id}`, {
-    method: 'DELETE',
-    headers: await createAuthHeaders(),
-  })
-
-  const data = await response.json()
-
-  if (!response.ok) {
-    throw new Error(data.error || 'Failed to delete workout.')
-  }
-
-  return data
+  return requestJson(
+    `/workouts/${id}`,
+    {
+      method: 'DELETE',
+      headers: await createAuthHeaders(),
+    },
+    'Failed to delete workout.',
+  )
 }
