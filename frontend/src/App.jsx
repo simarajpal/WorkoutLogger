@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import AIWorkoutInput from './components/AIWorkoutInput'
+import CoachPanel from './components/CoachPanel'
 import WorkoutForm from './components/WorkoutForm'
 import Auth from './pages/Auth'
 import { supabase } from './config/supabase'
@@ -324,6 +325,8 @@ function App() {
             </p>
           </article>
         </section>
+
+        <CoachPanel />
 
         <AIWorkoutInput onParsed={handleParsedWorkouts} />
 

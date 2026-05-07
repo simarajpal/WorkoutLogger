@@ -68,6 +68,18 @@ export async function parseWorkoutWithAI(text) {
   return Array.isArray(data) ? data : [data]
 }
 
+export async function getCoachReport() {
+  return requestJson(
+    '/api/ai/coach',
+    {
+      method: 'POST',
+      headers: await createAuthHeaders(true),
+      body: JSON.stringify({}),
+    },
+    'Could not generate coach report.',
+  )
+}
+
 export async function logWorkout(workoutData) {
   return requestJson(
     '/workouts',
