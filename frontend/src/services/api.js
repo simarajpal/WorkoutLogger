@@ -80,6 +80,18 @@ export async function getCoachReport() {
   )
 }
 
+export async function generateNextWorkout() {
+  return requestJson(
+    '/api/ai/next-workout',
+    {
+      method: 'POST',
+      headers: await createAuthHeaders(true),
+      body: JSON.stringify({}),
+    },
+    'Could not generate next workout.',
+  )
+}
+
 export async function logWorkout(workoutData) {
   return requestJson(
     '/workouts',

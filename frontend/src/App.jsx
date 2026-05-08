@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import AIWorkoutInput from './components/AIWorkoutInput'
 import CoachPanel from './components/CoachPanel'
+import NextWorkoutPanel from './components/NextWorkoutPanel'
 import WorkoutForm from './components/WorkoutForm'
 import Auth from './pages/Auth'
 import { supabase } from './config/supabase'
@@ -47,6 +48,16 @@ function mapParsedWorkoutToFormValues(parsedWorkout) {
   }
 }
 
+function mapGeneratedExerciseToFormValues(exercise) {
+  return {
+    exercise_name: exercise.name || '',
+    sets: exercise.sets,
+    reps: exercise.reps,
+    weight: exercise.suggestedWeight,
+    notes: exercise.notes || '',
+  }
+}
+
 function App() {
   const [session, setSession] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
@@ -58,6 +69,8 @@ function App() {
   const [parsedWorkouts, setParsedWorkouts] = useState([])
   const [selectedParsedIndex, setSelectedParsedIndex] = useState(null)
   const [isSavingAllParsed, setIsSavingAllParsed] = useState(false)
+  const [generatedWorkoutExercises, setGeneratedWorkoutExercises] = useState([])
+  const [selectedGeneratedIndex, setSelectedGeneratedIndex] = useState(null)
 
   useEffect(() => {
     async function loadSession() {
@@ -84,6 +97,8 @@ function App() {
         setListErrorMessage('')
         setParsedWorkouts([])
         setSelectedParsedIndex(null)
+        setGeneratedWorkoutExercises([])
+        setSelectedGeneratedIndex(null)
       }
     })
 
@@ -134,6 +149,7 @@ function App() {
   function handleStartEdit(workout) {
     setEditingWorkout(workout)
     setSelectedParsedIndex(null)
+    setSelectedGeneratedIndex(null)
     setListMessage('')
     setListErrorMessage('')
   }
@@ -142,6 +158,10 @@ function App() {
     setListErrorMessage('')
     const isSavingParsedWorkout =
       !editingWorkout && selectedParsedIndex !== null && parsedWorkouts.length > 0
+    const isSavingGeneratedWorkout =
+      !editingWorkout &&
+      selectedGeneratedIndex !== null &&
+      generatedWorkoutExercises.length > 0
 
     if (editingWorkout) {
       setWorkouts((currentWorkouts) =>
@@ -163,6 +183,15 @@ function App() {
       )
       setParsedWorkouts(nextParsedWorkouts)
       setSelectedParsedIndex(nextParsedWorkouts.length > 0 ? 0 : null)
+      return
+    }
+
+    if (isSavingGeneratedWorkout) {
+      const nextGeneratedExercises = generatedWorkoutExercises.filter(
+        (_, index) => index !== selectedGeneratedIndex,
+      )
+      setGeneratedWorkoutExercises(nextGeneratedExercises)
+      setSelectedGeneratedIndex(nextGeneratedExercises.length > 0 ? 0 : null)
     }
   }
 
@@ -174,10 +203,32 @@ function App() {
     setEditingWorkout(null)
     setParsedWorkouts(workoutsFromAI)
     setSelectedParsedIndex(workoutsFromAI.length > 0 ? 0 : null)
+    setGeneratedWorkoutExercises([])
+    setSelectedGeneratedIndex(null)
     setListMessage(
       workoutsFromAI.length > 1
         ? `Parsed ${workoutsFromAI.length} workout entries.`
         : 'Parsed 1 workout entry.',
+    )
+    setListErrorMessage('')
+  }
+
+  function handleLoadGeneratedWorkout(nextWorkout) {
+    const exercises = nextWorkout?.exercises || []
+
+    if (exercises.length === 0) {
+      return
+    }
+
+    setEditingWorkout(null)
+    setParsedWorkouts([])
+    setSelectedParsedIndex(null)
+    setGeneratedWorkoutExercises(exercises)
+    setSelectedGeneratedIndex(0)
+    setListMessage(
+      exercises.length > 1
+        ? `Loaded ${exercises.length} generated workout exercises.`
+        : 'Loaded 1 generated workout exercise.',
     )
     setListErrorMessage('')
   }
@@ -221,6 +272,10 @@ function App() {
   const lastWorkout = workouts[0]
   const selectedParsedWorkout =
     selectedParsedIndex !== null ? parsedWorkouts[selectedParsedIndex] : null
+  const selectedGeneratedExercise =
+    selectedGeneratedIndex !== null
+      ? generatedWorkoutExercises[selectedGeneratedIndex]
+      : null
   const groupedWorkouts = workouts.reduce((groups, workout) => {
     const dateKey = new Date(workout.created_at).toDateString()
 
@@ -328,6 +383,8 @@ function App() {
 
         <CoachPanel />
 
+        <NextWorkoutPanel onLoadIntoForm={handleLoadGeneratedWorkout} />
+
         <AIWorkoutInput onParsed={handleParsedWorkouts} />
 
         {parsedWorkouts.length > 0 && (
@@ -434,11 +491,16 @@ function App() {
           prefillWorkout={
             selectedParsedWorkout
               ? mapParsedWorkoutToFormValues(selectedParsedWorkout)
+              : selectedGeneratedExercise
+                ? mapGeneratedExerciseToFormValues(selectedGeneratedExercise)
               : null
           }
           onWorkoutSaved={handleWorkoutSaved}
           onCancelEdit={() => setEditingWorkout(null)}
-          onClearPrefill={() => setSelectedParsedIndex(null)}
+          onClearPrefill={() => {
+            setSelectedParsedIndex(null)
+            setSelectedGeneratedIndex(null)
+          }}
         />
 
         <section className="rounded-3xl border border-[#1e1e1e] bg-[#141414] p-6 shadow-2xl shadow-black/30">
